@@ -8,8 +8,7 @@ const CLICK_SOUNDS = [
   "assets/audio/click-02.mp3",
   "assets/audio/click-03.mp3",
   "assets/audio/click-04.mp3",
-  "assets/audio/click-05.mp3",
-  "assets/audio/click-06.mp3"
+  "assets/audio/click-05.mp3"
 ];
 
 const TILE_TYPES = [
