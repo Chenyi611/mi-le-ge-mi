@@ -65,7 +65,7 @@ https://你的GitHub用户名.github.io/仓库名/
 重新裁剪：
 
 ```bash
-C:\Users\21\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe scripts\make_tiles.py
+python scripts/make_tiles.py
 ```
 
 原图文件名和扩展名不用固定，脚本会尝试识别 `图片/` 文件夹里的所有图片，并自动生成标准 PNG 命名。
