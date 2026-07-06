@@ -3,6 +3,10 @@
 const IMAGE_ASSETS_ENABLED = true;
 const BOARD_UNITS = 9;
 const SLOT_LIMIT = 7;
+const MAMBO_CLICK_SOUNDS = [
+  "assets/audio/mambo-1.mp3",
+  "assets/audio/mambo-2.mp3"
+];
 
 const TILE_TYPES = [
   { id: "fish", name: "图案01", symbol: "🐟", color: "#9bdcff", image: "图片/0b5149c4caa69449dc0dc0fb2a7b0194.png" },
@@ -54,7 +58,10 @@ const state = {
 
 const audioState = {
   context: null,
-  lastPlayedAt: 0
+  lastPlayedAt: 0,
+  mamboPlayers: null,
+  mamboIndex: 0,
+  activeSamples: []
 };
 
 const el = {};
@@ -279,7 +286,7 @@ function pickTile(tileId) {
   }
 
   pushSnapshot();
-  playCatClickSound();
+  playMamboClickSound();
   tile.removed = true;
   addTrayItem({ tileId: tile.id, typeId: tile.typeId });
   state.moves += 1;
@@ -473,11 +480,56 @@ function setMessage(text) {
   el.message.textContent = text;
 }
 
-function playCatClickSound() {
+function playMamboClickSound() {
   const now = Date.now();
-  if (now - audioState.lastPlayedAt < 70) return;
+  if (now - audioState.lastPlayedAt < 90) return;
   audioState.lastPlayedAt = now;
 
+  if (playMamboSample()) return;
+  playMamboSynthClickSound();
+}
+
+function playMamboSample() {
+  if (MAMBO_CLICK_SOUNDS.length === 0) return false;
+
+  if (!audioState.mamboPlayers) {
+    audioState.mamboPlayers = MAMBO_CLICK_SOUNDS.map((src) => {
+      const audio = new Audio(src);
+      audio.preload = "auto";
+      audio.volume = 0.55;
+      return audio;
+    });
+  }
+
+  const baseSample = audioState.mamboPlayers[audioState.mamboIndex % audioState.mamboPlayers.length];
+  audioState.mamboIndex += 1;
+
+  try {
+    const sample = baseSample.cloneNode(true);
+    sample.volume = 0.55;
+    sample.currentTime = 0;
+    audioState.activeSamples.push(sample);
+
+    const removeSample = () => {
+      audioState.activeSamples = audioState.activeSamples.filter((item) => item !== sample);
+    };
+    sample.addEventListener("ended", removeSample, { once: true });
+    sample.addEventListener("error", removeSample, { once: true });
+
+    const promise = sample.play();
+    if (promise && typeof promise.catch === "function") {
+      promise.catch(() => {
+        removeSample();
+        playMamboSynthClickSound();
+      });
+    }
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+function playMamboSynthClickSound() {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextClass) return;
   if (!audioState.context) audioState.context = new AudioContextClass();
@@ -485,42 +537,78 @@ function playCatClickSound() {
   const context = audioState.context;
   if (context.state === "suspended") context.resume();
 
-  const start = context.currentTime;
-  const duration = 0.28;
+  const start = context.currentTime + 0.01;
+  const pattern = [
+    { time: 0, frequency: 392, duration: 0.09, gain: 0.12 },
+    { time: 0.055, frequency: 523, duration: 0.08, gain: 0.1 },
+    { time: 0.13, frequency: 440, duration: 0.07, gain: 0.09 },
+    { time: 0.195, frequency: 659, duration: 0.11, gain: 0.11 }
+  ];
+
+  pattern.forEach((note) => {
+    playPluck(context, start + note.time, note.frequency, note.duration, note.gain);
+  });
+  playHandDrum(context, start + 0.015, 170, 0.075, 0.055);
+  playHandDrum(context, start + 0.145, 220, 0.06, 0.04);
+}
+
+function playPluck(context, start, frequency, duration, gainValue) {
   const oscillator = context.createOscillator();
+  const secondOscillator = context.createOscillator();
   const toneGain = context.createGain();
   const filter = context.createBiquadFilter();
-  const tremolo = context.createOscillator();
-  const tremoloGain = context.createGain();
 
   oscillator.type = "triangle";
-  oscillator.frequency.setValueAtTime(520, start);
-  oscillator.frequency.exponentialRampToValueAtTime(760, start + 0.11);
-  oscillator.frequency.exponentialRampToValueAtTime(420, start + duration);
+  oscillator.frequency.setValueAtTime(frequency, start);
+  oscillator.frequency.exponentialRampToValueAtTime(frequency * 0.92, start + duration);
 
-  filter.type = "bandpass";
-  filter.frequency.setValueAtTime(920, start);
-  filter.Q.setValueAtTime(6, start);
+  secondOscillator.type = "sine";
+  secondOscillator.frequency.setValueAtTime(frequency * 1.5, start);
+  secondOscillator.frequency.exponentialRampToValueAtTime(frequency * 1.35, start + duration);
 
-  tremolo.type = "sine";
-  tremolo.frequency.setValueAtTime(18, start);
-  tremoloGain.gain.setValueAtTime(26, start);
-  tremolo.connect(tremoloGain);
-  tremoloGain.connect(oscillator.frequency);
+  filter.type = "lowpass";
+  filter.frequency.setValueAtTime(1800, start);
+  filter.frequency.exponentialRampToValueAtTime(620, start + duration);
+  filter.Q.setValueAtTime(5, start);
 
   toneGain.gain.setValueAtTime(0.0001, start);
-  toneGain.gain.exponentialRampToValueAtTime(0.13, start + 0.035);
-  toneGain.gain.exponentialRampToValueAtTime(0.055, start + 0.16);
+  toneGain.gain.exponentialRampToValueAtTime(gainValue, start + 0.012);
   toneGain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
 
   oscillator.connect(filter);
+  secondOscillator.connect(filter);
   filter.connect(toneGain);
   toneGain.connect(context.destination);
 
   oscillator.start(start);
-  tremolo.start(start);
+  secondOscillator.start(start);
   oscillator.stop(start + duration + 0.03);
-  tremolo.stop(start + duration + 0.03);
+  secondOscillator.stop(start + duration + 0.03);
+}
+
+function playHandDrum(context, start, frequency, duration, gainValue) {
+  const oscillator = context.createOscillator();
+  const gain = context.createGain();
+  const filter = context.createBiquadFilter();
+
+  oscillator.type = "sine";
+  oscillator.frequency.setValueAtTime(frequency, start);
+  oscillator.frequency.exponentialRampToValueAtTime(72, start + duration);
+
+  filter.type = "bandpass";
+  filter.frequency.setValueAtTime(260, start);
+  filter.Q.setValueAtTime(8, start);
+
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(gainValue, start + 0.008);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+  oscillator.connect(filter);
+  filter.connect(gain);
+  gain.connect(context.destination);
+
+  oscillator.start(start);
+  oscillator.stop(start + duration + 0.02);
 }
 
 function playMatchSound(multiplier = 1) {

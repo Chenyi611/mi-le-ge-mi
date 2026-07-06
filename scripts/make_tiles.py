@@ -1,12 +1,12 @@
 from pathlib import Path
 import json
-from PIL import Image, ImageChops, ImageOps
+from PIL import Image, ImageChops, ImageDraw, ImageOps
 
 ROOT = Path.cwd()
 SOURCE_DIR = ROOT / "\u56fe\u7247"
 OUTPUT_DIR = ROOT / "assets" / "tiles"
 SIZE = 512
-PADDING = 36
+PADDING = 8
 
 def image_files():
     paths = []
@@ -26,7 +26,16 @@ def alpha_bbox(image):
     if "A" not in image.getbands():
         return None
     alpha = image.getchannel("A")
-    return alpha.point(lambda value: 255 if value > 10 else 0).getbbox()
+    bbox = alpha.point(lambda value: 255 if value > 10 else 0).getbbox()
+    if not bbox:
+        return None
+
+    left, top, right, bottom = bbox
+    area = (right - left) * (bottom - top)
+    full_area = image.size[0] * image.size[1]
+    if area > full_area * 0.985:
+        return None
+    return bbox
 
 
 def border_color(image):
@@ -47,7 +56,7 @@ def background_bbox(image):
     rgb = image.convert("RGB")
     bg = Image.new("RGB", rgb.size, border_color(rgb))
     diff = ImageChops.difference(rgb, bg).convert("L")
-    mask = diff.point(lambda value: 255 if value > 30 else 0)
+    mask = diff.point(lambda value: 255 if value > 22 else 0)
     bbox = mask.getbbox()
     if not bbox:
         return None
@@ -60,13 +69,29 @@ def background_bbox(image):
     return bbox
 
 
+def content_bbox(image):
+    bbox = alpha_bbox(image)
+    if bbox:
+        inner = background_bbox(image.crop(bbox))
+        if inner:
+            left, top, _, _ = bbox
+            return (
+                left + inner[0],
+                top + inner[1],
+                left + inner[2],
+                top + inner[3],
+            )
+        return bbox
+    return background_bbox(image)
+
+
 def square_from_bbox(bbox, image_size):
     width, height = image_size
     left, top, right, bottom = bbox
     box_width = right - left
     box_height = bottom - top
-    side = max(box_width, box_height)
-    side = min(max(side, min(width, height) * 0.55), max(width, height))
+    side = max(box_width, box_height) * 1.08
+    side = min(max(side, min(width, height) * 0.22), max(width, height))
     cx = (left + right) / 2
     cy = (top + bottom) / 2
     left = int(round(cx - side / 2))
@@ -100,20 +125,89 @@ def center_square(image):
     return (left, top, left + side, top + side)
 
 
+def circle_mask(size):
+    scale = 4
+    large_size = size * scale
+    mask = Image.new("L", (large_size, large_size), 0)
+    draw = ImageDraw.Draw(mask)
+    draw.ellipse((0, 0, large_size - 1, large_size - 1), fill=255)
+    return mask.resize((size, size), Image.Resampling.LANCZOS)
+
+
+def is_light_background(pixel):
+    red, green, blue, alpha = pixel
+    if alpha < 16:
+        return False
+    return min(red, green, blue) > 245 and max(red, green, blue) - min(red, green, blue) < 22
+
+
+def remove_connected_light_background(image):
+    width, height = image.size
+    pixels = image.load()
+    visited = bytearray(width * height)
+    stack = []
+
+    def add_if_background(x, y):
+        index = y * width + x
+        if visited[index] or not is_light_background(pixels[x, y]):
+            return
+        visited[index] = 1
+        stack.append((x, y))
+
+    for x in range(width):
+        add_if_background(x, 0)
+        add_if_background(x, height - 1)
+    for y in range(height):
+        add_if_background(0, y)
+        add_if_background(width - 1, y)
+
+    for y in range(height):
+        for x in range(width):
+            if not is_light_background(pixels[x, y]):
+                continue
+            touches_transparency = False
+            for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                if nx < 0 or nx >= width or ny < 0 or ny >= height or pixels[nx, ny][3] < 16:
+                    touches_transparency = True
+                    break
+            if touches_transparency:
+                add_if_background(x, y)
+
+    while stack:
+        x, y = stack.pop()
+        for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+            if 0 <= nx < width and 0 <= ny < height:
+                add_if_background(nx, ny)
+
+    if not any(visited):
+        return image
+
+    output = image.copy()
+    output_pixels = output.load()
+    for y in range(height):
+        for x in range(width):
+            if visited[y * width + x]:
+                red, green, blue, _ = output_pixels[x, y]
+                output_pixels[x, y] = (red, green, blue, 0)
+    return output
+
+
 def crop_icon(path):
     source = Image.open(path)
     image = ImageOps.exif_transpose(source).convert("RGBA")
-    bbox = alpha_bbox(image) or background_bbox(image) or center_square(image)
+    bbox = content_bbox(image) or center_square(image)
     crop_box = square_from_bbox(bbox, image.size)
     cropped = image.crop(crop_box)
 
     content_size = SIZE - PADDING * 2
-    cropped.thumbnail((content_size, content_size), Image.Resampling.LANCZOS)
+    cropped = ImageOps.fit(cropped, (content_size, content_size), Image.Resampling.LANCZOS)
+    cropped = remove_connected_light_background(cropped)
 
     canvas = Image.new("RGBA", (SIZE, SIZE), (255, 255, 255, 0))
-    x = (SIZE - cropped.size[0]) // 2
-    y = (SIZE - cropped.size[1]) // 2
-    canvas.alpha_composite(cropped, (x, y))
+    rounded = Image.new("RGBA", (content_size, content_size), (255, 255, 255, 0))
+    rounded.alpha_composite(cropped, (0, 0))
+    rounded.putalpha(ImageChops.multiply(rounded.getchannel("A"), circle_mask(content_size)))
+    canvas.alpha_composite(rounded, (PADDING, PADDING))
     return canvas, crop_box
 
 
