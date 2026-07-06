@@ -3,9 +3,13 @@
 const IMAGE_ASSETS_ENABLED = true;
 const BOARD_UNITS = 9;
 const SLOT_LIMIT = 7;
-const MAMBO_CLICK_SOUNDS = [
-  "assets/audio/mambo-1.mp3",
-  "assets/audio/mambo-2.mp3"
+const CLICK_SOUNDS = [
+  "assets/audio/click-01.mp3",
+  "assets/audio/click-02.mp3",
+  "assets/audio/click-03.mp3",
+  "assets/audio/click-04.mp3",
+  "assets/audio/click-05.mp3",
+  "assets/audio/click-06.mp3"
 ];
 
 const TILE_TYPES = [
@@ -59,8 +63,8 @@ const state = {
 const audioState = {
   context: null,
   lastPlayedAt: 0,
-  mamboPlayers: null,
-  mamboIndex: 0,
+  clickPlayers: null,
+  clickIndex: 0,
   activeSamples: []
 };
 
@@ -286,7 +290,7 @@ function pickTile(tileId) {
   }
 
   pushSnapshot();
-  playMamboClickSound();
+  playClickSound();
   tile.removed = true;
   addTrayItem({ tileId: tile.id, typeId: tile.typeId });
   state.moves += 1;
@@ -480,20 +484,20 @@ function setMessage(text) {
   el.message.textContent = text;
 }
 
-function playMamboClickSound() {
+function playClickSound() {
   const now = Date.now();
   if (now - audioState.lastPlayedAt < 90) return;
   audioState.lastPlayedAt = now;
 
-  if (playMamboSample()) return;
-  playMamboSynthClickSound();
+  if (playClickSample()) return;
+  playSynthClickSound();
 }
 
-function playMamboSample() {
-  if (MAMBO_CLICK_SOUNDS.length === 0) return false;
+function playClickSample() {
+  if (CLICK_SOUNDS.length === 0) return false;
 
-  if (!audioState.mamboPlayers) {
-    audioState.mamboPlayers = MAMBO_CLICK_SOUNDS.map((src) => {
+  if (!audioState.clickPlayers) {
+    audioState.clickPlayers = CLICK_SOUNDS.map((src) => {
       const audio = new Audio(src);
       audio.preload = "auto";
       audio.volume = 0.55;
@@ -501,8 +505,8 @@ function playMamboSample() {
     });
   }
 
-  const baseSample = audioState.mamboPlayers[audioState.mamboIndex % audioState.mamboPlayers.length];
-  audioState.mamboIndex += 1;
+  const baseSample = audioState.clickPlayers[audioState.clickIndex % audioState.clickPlayers.length];
+  audioState.clickIndex += 1;
 
   try {
     const sample = baseSample.cloneNode(true);
@@ -520,7 +524,7 @@ function playMamboSample() {
     if (promise && typeof promise.catch === "function") {
       promise.catch(() => {
         removeSample();
-        playMamboSynthClickSound();
+        playSynthClickSound();
       });
     }
     return true;
@@ -529,7 +533,7 @@ function playMamboSample() {
   }
 }
 
-function playMamboSynthClickSound() {
+function playSynthClickSound() {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextClass) return;
   if (!audioState.context) audioState.context = new AudioContextClass();
