@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>咪了个咪</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">咪</div>
+        <div>
+          <h1>咪了个咪</h1>
+          <p id="levelLabel">第 1 关</p>
+        </div>
+      </div>
+
+      <div class="top-actions" aria-label="游戏状态">
+        <div class="pill">
+          <span>剩余</span>
+          <strong id="remainingCount">0</strong>
+        </div>
+        <div class="pill">
+          <span>步数</span>
+          <strong id="moveCount">0</strong>
+        </div>
+        <div class="pill">
+          <span>分数</span>
+          <strong id="scoreCount">0</strong>
+        </div>
+      </div>
+    </header>
+
+    <section class="game-shell" aria-label="游戏区域">
+      <div class="play-area">
+        <div class="board-frame">
+          <div id="board" class="board" aria-label="方块棋盘"></div>
+        </div>
+
+        <div class="tray-wrap" aria-label="收集槽">
+          <div id="tray" class="tray"></div>
+        </div>
+      </div>
+
+      <aside class="side-panel">
+        <section class="status-panel" aria-label="当前局面">
+          <div class="panel-row">
+            <span>可点</span>
+            <strong id="freeCount">0</strong>
+          </div>
+          <div class="panel-row">
+            <span>槽位</span>
+            <strong id="slotCount">0 / 7</strong>
+          </div>
+          <div class="panel-row">
+            <span>连消</span>
+            <strong id="comboCount">0</strong>
+          </div>
+        </section>
+
+        <section class="tool-panel" aria-label="工具">
+          <button id="undoBtn" class="tool-btn" type="button" title="撤回">
+            <span aria-hidden="true">↶</span>
+            <span>撤回</span>
+          </button>
+          <button id="shuffleBtn" class="tool-btn" type="button" title="洗牌">
+            <span aria-hidden="true">↻</span>
+            <span>洗牌</span>
+          </button>
+          <button id="hintBtn" class="tool-btn" type="button" title="提示">
+            <span aria-hidden="true">◇</span>
+            <span>提示</span>
+          </button>
+          <button id="restartBtn" class="tool-btn danger" type="button" title="重开">
+            <span aria-hidden="true">×</span>
+            <span>重开</span>
+          </button>
+        </section>
+
+        <p id="message" class="message" role="status" aria-live="polite"></p>
+      </aside>
+    </section>
+  </main>
+
+  <div id="resultOverlay" class="result-overlay" hidden>
+    <div class="result-dialog" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
+      <h2 id="resultTitle">过关</h2>
+      <p id="resultText">这一局很漂亮。</p>
+      <div class="result-actions">
+        <button id="resultPrimaryBtn" class="primary-btn" type="button">下一关</button>
+        <button id="resultRestartBtn" class="secondary-btn" type="button">重开本关</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/tiles/manifest.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

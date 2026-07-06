@@ -1,0 +1,5 @@
+preview-server.log
+preview-server.err
+*.tmp
+*.bak
+图片/
