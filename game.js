@@ -63,7 +63,7 @@ const audioState = {
   context: null,
   lastPlayedAt: 0,
   clickPlayers: null,
-  lastClickSoundIndex: -1,
+  recentClickSoundIndexes: [],
   activeSamples: []
 };
 
@@ -506,7 +506,7 @@ function playClickSample() {
 
   const soundIndex = pickRandomClickSoundIndex(audioState.clickPlayers.length);
   const baseSample = audioState.clickPlayers[soundIndex];
-  audioState.lastClickSoundIndex = soundIndex;
+  rememberClickSoundIndex(soundIndex);
 
   try {
     const sample = baseSample.cloneNode(true);
@@ -536,11 +536,21 @@ function playClickSample() {
 function pickRandomClickSoundIndex(count) {
   if (count <= 1) return 0;
 
-  let index = Math.floor(Math.random() * count);
-  if (index === audioState.lastClickSoundIndex) {
-    index = (index + 1 + Math.floor(Math.random() * (count - 1))) % count;
+  const recentIndexes = audioState.recentClickSoundIndexes.slice(-2);
+  const candidates = [];
+  for (let index = 0; index < count; index += 1) {
+    if (!recentIndexes.includes(index)) candidates.push(index);
   }
-  return index;
+
+  const pool = candidates.length > 0 ? candidates : Array.from({ length: count }, (_, index) => index);
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function rememberClickSoundIndex(index) {
+  audioState.recentClickSoundIndexes.push(index);
+  if (audioState.recentClickSoundIndexes.length > 2) {
+    audioState.recentClickSoundIndexes.shift();
+  }
 }
 
 function playSynthClickSound() {
