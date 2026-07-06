@@ -63,7 +63,7 @@ const audioState = {
   context: null,
   lastPlayedAt: 0,
   clickPlayers: null,
-  clickIndex: 0,
+  lastClickSoundIndex: -1,
   activeSamples: []
 };
 
@@ -504,8 +504,9 @@ function playClickSample() {
     });
   }
 
-  const baseSample = audioState.clickPlayers[audioState.clickIndex % audioState.clickPlayers.length];
-  audioState.clickIndex += 1;
+  const soundIndex = pickRandomClickSoundIndex(audioState.clickPlayers.length);
+  const baseSample = audioState.clickPlayers[soundIndex];
+  audioState.lastClickSoundIndex = soundIndex;
 
   try {
     const sample = baseSample.cloneNode(true);
@@ -530,6 +531,16 @@ function playClickSample() {
   } catch (error) {
     return false;
   }
+}
+
+function pickRandomClickSoundIndex(count) {
+  if (count <= 1) return 0;
+
+  let index = Math.floor(Math.random() * count);
+  if (index === audioState.lastClickSoundIndex) {
+    index = (index + 1 + Math.floor(Math.random() * (count - 1))) % count;
+  }
+  return index;
 }
 
 function playSynthClickSound() {
