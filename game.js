@@ -1,7 +1,8 @@
 "use strict";
 
 const IMAGE_ASSETS_ENABLED = true;
-const BOARD_UNITS = 9;
+const BOARD_COLS = 9;
+const BOARD_ROWS = 12;
 const SLOT_LIMIT = 7;
 const CLICK_SOUNDS = [
   "assets/audio/click-01.mp3",
@@ -143,20 +144,18 @@ function startLevel(level, options = {}) {
 function createLevelTiles(level, round) {
   const rng = createRng(Date.now() + level * 4099 + round * 977);
   const playableTypes = getPlayableTileTypes();
-  const minTypeCount = Math.min(6, playableTypes.length);
-  const typeCount = clamp(5 + Math.floor(level * 1.25), minTypeCount, playableTypes.length);
-  const tripleCount = clamp(10 + level * 3, 12, 34);
-  const selectedTypes = shuffle([...playableTypes], rng).slice(0, typeCount);
+  const difficulty = getLevelDifficulty(level, playableTypes.length);
+  const selectedTypes = shuffle([...playableTypes], rng).slice(0, difficulty.typeCount);
   const tileTypeIds = [];
 
-  for (let i = 0; i < tripleCount; i += 1) {
+  for (let i = 0; i < difficulty.tripleCount; i += 1) {
     const type = selectedTypes[i % selectedTypes.length];
     tileTypeIds.push(type.id, type.id, type.id);
   }
 
   shuffle(tileTypeIds, rng);
 
-  const positions = createPositions(level, tileTypeIds.length, rng);
+  const positions = createPositions(difficulty, tileTypeIds.length, rng);
   return tileTypeIds.map((typeId, index) => ({
     id: `tile-${round}-${index}`,
     typeId,
@@ -167,25 +166,41 @@ function createLevelTiles(level, round) {
   }));
 }
 
-function createPositions(level, total, rng) {
-  const layerCount = clamp(3 + Math.floor(level / 2), 3, 7);
+function getLevelDifficulty(level, playableTypeCount) {
+  const safeLevel = Math.max(1, level);
+  const minTypeCount = Math.min(5, playableTypeCount);
+  return {
+    level: safeLevel,
+    layerCount: clamp(3 + Math.floor((safeLevel - 1) / 3), 3, 8),
+    tripleCount: clamp(12 + safeLevel * 2, 14, 48),
+    typeCount: clamp(5 + Math.floor((safeLevel - 1) / 2), minTypeCount, playableTypeCount),
+    spread: Math.min(0.7, (safeLevel - 1) * 0.04)
+  };
+}
+
+function createPositions(difficulty, total, rng) {
+  const { layerCount, level, spread } = difficulty;
   const candidates = [];
+  const centerX = (BOARD_COLS - 1) / 2;
+  const centerY = (BOARD_ROWS - 1) / 2;
 
   for (let z = 0; z < layerCount; z += 1) {
     const offsetX = z % 2 === 0 ? 0 : 0.5;
     const offsetY = z % 3 === 0 ? 0 : 0.5;
-    const radius = 5.35 - z * 0.28;
+    const radiusX = 4.15 + spread - z * 0.12;
+    const radiusY = 5.75 + spread - z * 0.17;
+    const edgeDropChance = Math.max(0.05, 0.16 - level * 0.006);
 
-    for (let y = 0; y <= 8; y += 1) {
-      for (let x = 0; x <= 8; x += 1) {
+    for (let y = 0; y < BOARD_ROWS; y += 1) {
+      for (let x = 0; x < BOARD_COLS; x += 1) {
         const px = x + offsetX;
         const py = y + offsetY;
-        if (px > 8 || py > 8) continue;
+        if (px > BOARD_COLS - 1 || py > BOARD_ROWS - 1) continue;
 
-        const dx = Math.abs(px - 4);
-        const dy = Math.abs(py - 4);
-        const inShape = dx * 0.95 + dy * 0.82 <= radius;
-        const softenedEdge = rng() > 0.13 || z === layerCount - 1;
+        const dx = Math.abs(px - centerX) / radiusX;
+        const dy = Math.abs(py - centerY) / radiusY;
+        const inShape = dx * dx + dy * dy <= 1;
+        const softenedEdge = rng() > edgeDropChance || z === layerCount - 1;
         if (inShape && softenedEdge) candidates.push({ x: px, y: py, z });
       }
     }
@@ -193,8 +208,8 @@ function createPositions(level, total, rng) {
 
   if (candidates.length < total) {
     for (let z = 0; z < layerCount; z += 1) {
-      for (let y = 0; y <= 8; y += 1) {
-        for (let x = 0; x <= 8; x += 1) {
+      for (let y = 0; y < BOARD_ROWS; y += 1) {
+        for (let x = 0; x < BOARD_COLS; x += 1) {
           candidates.push({ x, y, z });
         }
       }
@@ -224,8 +239,8 @@ function renderBoard() {
     const button = document.createElement("button");
     button.type = "button";
     button.className = `tile ${free ? "is-free" : "is-blocked"}${state.hintId === tile.id ? " is-hint" : ""}`;
-    button.style.left = `${(tile.x / BOARD_UNITS) * 100}%`;
-    button.style.top = `${(tile.y / BOARD_UNITS) * 100}%`;
+    button.style.left = `${(tile.x / BOARD_COLS) * 100}%`;
+    button.style.top = `${(tile.y / BOARD_ROWS) * 100}%`;
     button.style.zIndex = String(tile.z * 20 + Math.round(tile.y * 2));
     button.style.setProperty("--lift-x", `${tile.z * 2}px`);
     button.style.setProperty("--lift-y", `${tile.z * -2}px`);

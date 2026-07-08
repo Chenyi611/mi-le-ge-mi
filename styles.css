@@ -139,7 +139,7 @@ button {
 .board {
   position: relative;
   width: 100%;
-  aspect-ratio: 1;
+  aspect-ratio: 9 / 12;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -147,7 +147,7 @@ button {
     linear-gradient(90deg, rgba(77, 150, 255, 0.08) 1px, transparent 1px),
     linear-gradient(0deg, rgba(33, 184, 154, 0.08) 1px, transparent 1px),
     #ffffff;
-  background-size: calc(100% / 9) calc(100% / 9);
+  background-size: calc(100% / 9) calc(100% / 12);
   box-shadow: var(--shadow);
   touch-action: manipulation;
 }
@@ -164,7 +164,7 @@ button {
 .tile {
   position: absolute;
   width: calc(100% / 9 - 6px);
-  height: calc(100% / 9 - 6px);
+  height: calc(100% / 12 - 6px);
   border: 0;
   border-radius: 8px;
   padding: 4px;
@@ -553,7 +553,7 @@ button {
 
   .tile {
     width: calc(100% / 9 - 4px);
-    height: calc(100% / 9 - 4px);
+    height: calc(100% / 12 - 4px);
     padding: 3px;
     border-radius: 6px;
     box-shadow:
@@ -684,7 +684,7 @@ button {
 
   .tile {
     width: calc(100% / 9 - 3px);
-    height: calc(100% / 9 - 3px);
+    height: calc(100% / 12 - 3px);
     padding: 2px;
     box-shadow:
       0 3px 0 rgba(23, 32, 51, 0.11),
@@ -810,7 +810,7 @@ button {
 
   .board-frame,
   .tray-wrap {
-    width: min(calc(100svh - 70px), 100%);
+    width: min(calc(75svh - 52px), 100%);
   }
 
   .side-panel {
@@ -831,7 +831,7 @@ body {
 }
 
 .app {
-  width: min(440px, 100%);
+  width: min(420px, 100%);
   min-height: 100dvh;
   padding:
     max(12px, env(safe-area-inset-top))
@@ -941,7 +941,7 @@ body {
     linear-gradient(90deg, rgba(255, 255, 255, 0.16) 1px, transparent 1px),
     linear-gradient(0deg, rgba(255, 255, 255, 0.16) 1px, transparent 1px),
     #91df62;
-  background-size: calc(100% / 9) calc(100% / 9);
+  background-size: calc(100% / 9) calc(100% / 12);
   box-shadow: inset 0 0 0 4px rgba(80, 164, 68, 0.16);
 }
 
@@ -952,7 +952,7 @@ body {
 
 .tile {
   width: calc(100% / 9 - 4px);
-  height: calc(100% / 9 - 4px);
+  height: calc(100% / 12 - 4px);
   padding: 3px;
   border: 2px solid rgba(255, 255, 255, 0.82);
   border-radius: 8px;
@@ -1129,7 +1129,7 @@ body {
 
   .tile {
     width: calc(100% / 9 - 3px);
-    height: calc(100% / 9 - 3px);
+    height: calc(100% / 12 - 3px);
     border-width: 1px;
     border-radius: 7px;
   }
@@ -1185,6 +1185,12 @@ body {
     display: none;
   }
 
+  .board-frame,
+  .tray-wrap,
+  .side-panel {
+    width: min(100%, max(260px, calc(75dvh - 213px)));
+  }
+
   .tool-btn {
     min-height: 36px;
   }
@@ -1202,6 +1208,6 @@ body {
 
   .board-frame,
   .tray-wrap {
-    width: min(calc(100svh - 68px), 100%);
+    width: min(calc(75svh - 51px), 100%);
   }
 }
